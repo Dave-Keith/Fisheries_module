@@ -1,0 +1,951 @@
+---
+title: "Stock Assessment Tutorial"
+author: "Eura Nama"
+output:
+  bookdown::word_document2:
+    fig_caption: yes
+    number_sections: false
+  fontsize: 12pt
+  sansfont: Liberation Sans
+  mainfont: Liberation Sans
+  classoption: twocolumn
+  language: english
+  #bookdown::html_document2: default
+  # bookdown::pdf_document2:
+  #     keep_tex: yes
+  #     number_sections: false
+  #     toc: no
+  #     # includes:
+  #     # in_header: "styling.sty"
+  # language: english
+  # classoption: twocolumn
+header-includes: 
+  - \usepackage{tikz} \usepackage{pdflscape} \usepackage{float}
+  - \newcommand{\blandscape}{\begin{landscape}}
+  - \newcommand{\elandscape}{\end{landscape}}
+---
+
+# Stock Assessment Model (SAM) Tutorial Project
+
+# Tutorial Objectives and Overview
+
+1. There are 3 main components to this tutorial that you should ask me lots of questions about until you really understand what is happening!
+   i.   *Simulation*
+        - This will provide us with *fake* data that was generated with set parameters and results in our *known* data to compare against
+        - The biomass of the adults and the recruits generated in this simulation is then distributed across the survey domain.
+        - You do not need to do anything for this as we have all the parameters set and this will run without you having to change anything
+   ii.  *Survey Design*
+         - Here we sample from the simulated data above, you can determine the number of stations to sample and the design of the survey
+         - The survey data is then used to create indices of adult Biomass and Recruits which are inputs into the Stock Assessment Model (SAM)
+         - By changing the survey design you can see how sample size and survey type influence the estimation of biomass in the Stock Assessment Model (SAM)
+   iii. *Stock Assessment Model (SAM)*
+         - The indices from the survey are inputted into the Stock Assessment Model to get an estimate of the model biomass
+         - Here you have control of how the model will estimate 2 of the input parameters  
+           - *Catchability (q) * and *Natural mortality (m)*.
+         - By varying these input parameters you can explore how being *wrong* about these parameters would impact your believe about the status of the stock
+2. Much of the heavy lifting is done behind the scenes and your goal will be to understand how changing the survey design and/or the 2 model parameter impacts the biomass estimates from our Stock Assessment Model (SAM)
+
+
+# What are we doing?
+
+A.  Today you are going to run a simple Stock Assessment Model (SAM) for the Dusky Scallop Shark (*Dustious maximus*) stock in the Gulf of Maine using a Delay Difference model 
+
+    i.  Instead of getting one year of data, this tutorial will automatically simulate the biomass dynamics of this stock between 1990 and 2021
+        - The simulation is used to make 'fake' real world data which we then use to understand how survey design and model parameter uncertainty can influence our understanding of population status
+    ii.  Using this simulated data you will design a survey to sample the biomass in the area (similar to Tutorial #2) in each year
+    iii. Then this survey data will be used in the Delay Difference Stock Assessment Model (SAM) to get an estimate of biomass for each year
+    iv.  You can vary several parameters to see how they influence the model results.
+    
+B.  The stock and the survey is the same as used in Tutorial/Lecture #2, we just have multiple years of data as part of this survey
+
+C.  For the survey design we will again have 2 variables as part of the survey design that you can control
+
+    i. You can vary the number of survey tows
+        - You have the same constraints as in Lecture 2, I'd suggest you try a low value and a high value as based on what you found in Tutorial #2
+    ii. You can decide if you want to have a *Random* or stratified survey 
+        - The only stratification option this time is using the *NAFO* sub-areas
+        
+D.  The survey indices will then be used as the inputs into the Delay Difference Stock Assessment Model (SAM). There will be two model inputs you can adjust
+
+    i. The survey *catchability prior*.  
+        - Survey catchability can be difficult to estimate in the real world, but it is a critical parameter to scale up from a survey index to a biomass index
+        - The Stock Assessment Model (SAM) requires 'prior' knowledge of what we believe survey catchability is. 
+        - In our simulation we have set *catchability* to be a constant at 0.3
+          - Explore how changing the *catchability prior* effects the estimate of biomass (and other paratmeters) in the SAM
+    ii. The *natural mortality prior*
+        - In our simulation we have set natural mortality to = 0.2 on average, but it varies over time
+        - We know natural mortality varies from year to year, but we don't have any data from our survey that informs *what *m*.
+          - So we do not know what the mean *m* is
+          - Nor do we know how *m* varies over time
+        - As a result we need to give the model our *best guess* of what *m* is using a *natural mortality prior*
+          - Explore how changing the *natural mortality prior* effects the estimate of biomass (and other parameters) in the SAM.
+        
+# Questions to Consider
+
+1. How well does the Biomass form the SAM compare to the 'actual biomass'?
+
+2. How does varying the prior on the catchability impact the Stock Assessment results?
+   - What are the consequences of being wrong about catchability?
+3. How does varying the prior on natural mortality impact the Stock Assessment results?
+   - What are the consequences of being wrong about natural mortality?
+4. How do you think having a fixed natural mortality term is impacting the Stock Assessment results?
+
+# The Tutorial Tutorial
+
+i.    Open the file "Stock_Assessment_tutorial.Rmd" in R-Studio
+ii.   On line XX of this file you can change the number of tows used in the survey.  Default is 20 tows
+iii.  On line XX-YY of this file you can change the survey stratification scheme, options are "Random" and "NAFO"
+iv.   On line XX of this file you can change the number of times you simulate the Biomass time series and subsequent survey sampling
+v.    On line XX of this file you can change the *Catchability Prior* to see how this influences the SAM results
+vi.   On line XX of this file you can chnage the *Natural mortality Prior* to see how this influences the SAM results
+vii.  Press the "Knit" button in the tool bar 
+      - Make sure that you closed (and saved if you want to keep the results) the word document.
+
+
+
+
+
+```{r user-inputs, echo=F,message=F, warning=F}
+
+# You can set the number of stations...
+n.tows <- 200
+
+# How do you want to set up the survey, Random Stratified or NAFO stratified
+#Just comment and uncomment to shift between the options
+surv.dist <-"Random" # This is a random survey
+#surv.dist <- "NAFO" # This is a stratified survey using NAFO boundaries as the stratification scheme
+
+# As with Lecture 2, we can repeated sample the area to understand how changing the above impacts our survey index estimates of the actual Simulated Biomass
+# As with Tutorial #2, I suggest you try 1,5, and 25 realizations (go get a coffee when you run 25 times!)
+n.realizations <- 25
+
+# Parameters to tweak for the Delay Difference Stock Assessment Model (SAM)
+
+# Set your priors for q and m, you will get a plot showing the properties of this prior in the output. 
+q.prior <- data.frame(a=15,b=35) # q = catchability, very close to 0.3
+#q.prior <- data.frame(a=45,b=35) # Here is an alternative you can try for catchability prior, this gives a median q of around 0.55
+#m.prior <- data.frame(a=14,b=55) # m = natural mortality (proportional scale, I'm using M to be instantaneous rate). Very close to 0.2
+m.prior <- data.frame(a=40,b=55) # Here is an  alternative you can try for the natural mortality prior, this gives a median m of around 0.44.
+# Quick guide... if a < b your median for the prior will be < 0.5, if a = b it'll be around 0.5, if a > b it'll be > 0.5
+# the a/b ratio controls distance from 0.5.  
+# The size of a and b controls the width of the distributions, if a and b are low you get a very wide distributions
+# If a and b are high you get more narrow distributions.  
+#Play around with this command to experiment with different shapes of the beta distribution if interested
+#hist(rbeta(10000,15,35))
+
+
+```
+
+
+<!-- These parameters could also be changed if you'd like to do additional exploration, but isn't part of the core assignment here -->
+
+
+```{r other-parameters, echo=F}
+
+# You can change the area that is covered by each survey tow. This value is in m². The default value of 10,000 is equivalent to a 2 km survey tow that is 5 meters wide
+# Changing this won't have as much impact as it might in real world as simulation of real world variability in densities would take hours, so we leave it 
+# as a fixed number
+area.swept.m <-  10000    # somewhere in the 1000's of square meters tends to make sense here for trawl kinds of gear.  Also need to convert to km²
+# This too would have impacts on results if we had a more realistic biomass distribution scenario, but in this world we will leave it as is.
+initial.biomass <- 100000 # Could be any units, let's call it tonnes, and because of how I have this set up below this number isn't exact
+rec.biomass <- 30000 # This is approximately the average number of recruits over the time series, but it varies randomly year over year.
+
+# Catchability could also be allowed to vary spatially, but that adds a layer of complexity that is beyond the scope of this exercise, so 
+# changing this won't really do anything other than rescale the biomass per tow and survey biomass estimates.
+catchability.sims <- catchability <- 0.3 # What proportion of the population does survey tend to catch, we fix this value in the simulations as a single value that doesn't change over time.
+
+mean.nat.mort.sims <- m.mn   <- 0.2 # What is the average natural mortality for the population, the actual (simulated) natural mortality varies each year in the simulations, but in our Stock Assessment Model we assume that natural mortality doesn't vary over time, so there is only 1 model estimate for natural mortality
+
+# This is for the stock assessment model itself
+niter <- 20000 # If it is taking a long time for your models to run you can reduce this number, 20000 gives good results and runs in < 20 seconds on a tricked out laptop.
+
+
+```
+
+
+```{r setup, include=FALSE,echo=F, message=F,warning=F,cache=F}
+options(scipen = 999) # Just forces numbers to not be in scientific notiation
+# First up we will check your r packages and install anything you need for this for you.
+req.packages <- c("tidyverse","lubridate","plotly","sf","sp","data.table","units","cowplot","knitr",'concaveman',
+                  'ggthemes',"nngeo","marmap","RandomFields","ggplot2","stars","tmaptools","rnaturalearth",
+                  "rnaturalearthdata","raster","rgdal","RStoolbox","pals","ggnewscale","ggspatial",'devtools','rlist','matlab','coda','rjags','R2jags')
+# If you don't have the packages install them + give a heads up that you are
+new.packages <- req.packages[!(req.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)>0) 
+{
+  cat(paste0("Heads up, I have to install these packages for this to work:", new.packages ))
+  #wanna.install <- readline(prompt = "If you want to install these package(s) enter 'y': ")
+  #if(tolower(wanna.install) == 'y') 
+  install.packages(new.packages,repos = "http://cran.us.r-project.org") #else { stop("You didn't want to install the packages so this script does not work.")}
+}
+
+# You also need to install this github repo package if you do not have it.
+hi.res <- any(installed.packages()[,"Package"] %in% "rnaturalearthhires")
+if(hi.res == F) devtools::install_github("https://github.com/ropensci/rnaturalearthhires/")
+  
+
+# The libraries that we will use directly in this code
+library(knitr)
+library(ggplot2)
+library(gridExtra)
+library(reshape2)
+library(scales)
+library(cowplot)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(RandomFields)
+library(sf)
+library(marmap)
+library(stars)
+library(raster)
+library(matlab)
+library(R2jags)
+
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+# Set the Workding directory.
+
+
+#Some Custom Functions I'll need
+funs <- c("https://raw.githubusercontent.com/Mar-Scal/Assessment_fns/master/Maps/pectinid_projector_sf.R",
+          "https://raw.githubusercontent.com/Mar-scal/Assessment_fns/master/Maps/centre_of_gravity.R",
+          "https://raw.githubusercontent.com/Mar-scal/Assessment_fns/master/Maps/add_alpha_function.R",
+          "https://raw.githubusercontent.com/Mar-scal/Assessment_fns/master/Maps/combo_shp.R",
+          "https://raw.githubusercontent.com/Dave-Keith/Assessment_fns/master/Maps/convert_coords.R",
+          "https://raw.githubusercontent.com/Dave-Keith/Fisheries_module/master/Scripts/Functions/beta_dist_rand_num.R",
+          "https://raw.githubusercontent.com/Dave-Keith/Fisheries_module/master/Scripts/Functions/function_to_call_beta_or_strected_beta_functions.R",
+          "https://raw.githubusercontent.com/Dave-Keith/Fisheries_module/master/Scripts/Functions/Model_function.R",
+          "https://raw.githubusercontent.com/Dave-Keith/Fisheries_module/master/Scripts/Functions/posterior_plot.R",
+          "https://raw.githubusercontent.com/Dave-Keith/Fisheries_module/master/Scripts/Functions/stretched_beta_dist_rand_num_new.R")
+
+# Now run through a quick loop to load each one, just be sure that your working directory is read/write!
+for(fun in funs) 
+{
+  download.file(fun,destfile = basename(fun))
+  source(paste0(getwd(),"/",basename(fun)))
+  file.remove(paste0(getwd(),"/",basename(fun)))
+}
+
+
+  
+# A couple custom functions I may or may not use
+factor.2.number <- function(x) {as.numeric(levels(x))[x]} # My friend factor.2.number
+# Function in case you need it for transforming propotion data to not have 0's and 1's.  
+beta.transform <- function(dat,s=0.5)  (dat*(length(dat)-1) + s) / length(dat)
+# Cute little function to divide split something up by a weighting factor.
+nsplit = function(X,n)
+{
+  p = X/sum(X)
+  diff(round(n*cumsum(c(0,p))))
+}
+# Set the theme for the plots
+theme_set(theme_bw())
+
+# Now I want to make a bounding box that outlines our study area
+survey.domain <- st_as_sf(data.frame(X = c(465000, 750000, 750000, 650000, 600000, 400000),
+                                    Y = c(4450000,4450000,4710000,4900000,4860000,4800000),ID=1),coords = c("X","Y"),crs= 32619)
+# Transform it to proper units
+survey.domain <- st_transform(survey.domain,crs = 4326)
+# And convert it from some points into a polygon object
+survey.domain <- st_cast(st_combine(survey.domain),"POLYGON")
+
+# Now we can carve up our survey domain into a bunch of grids, size is I believe 0.1 degrees, so 6 minutes each I think (10 per degree)
+survey.grid <- st_make_grid(survey.domain,cellsize = 0.1)
+# Then we clip that to the survey domain and we have some nice cells we can toss biomass into kinda almost anyway we'd like.
+survey.grid <- st_intersection(survey.grid,survey.domain)
+# Make this a nice sf object for later.
+survey.grid <- st_sf(survey.grid)
+survey.grid$strata <- 1:nrow(survey.grid)
+# What is the total survey area
+tot.area <- st_area(survey.grid) %>% units::set_units("km2") %>% as.numeric() %>% sum(na.rm=T)
+
+# Lets grab the NAFO subareas that are going to form our survey domain, I'll need to tweak a few of them to cut off to the south of GB
+# Figure out where your tempfiles are stored
+temp <- tempfile()
+# Download this to the temp directory you created above
+download.file("https://raw.githubusercontent.com/Mar-scal/GIS_layers/master/NAFO/Subareas.zip", temp, quiet=T)
+# Figure out what this file was saved as
+temp2 <- tempfile()
+# Unzip it
+unzip(zipfile=temp, exdir=temp2)
+# This pulls in all the layers from the above location
+nafo <- combo.shp(temp2,make.sf=T, quiet=T)
+nafo <- st_make_valid(nafo)
+# Now clip the nafo strata into our made up survey domain
+nafo.strata <- st_intersection(nafo,survey.domain)
+nafo.strata
+# Two of the strata kinda suck, id 125, 135, 141, and 142 are going to go as they aren't unique subareas.
+nafo.strata <- nafo.strata %>% dplyr::filter(!id %in% c(125,135,141,142))
+nafo.strata$strata <- nafo.strata$id
+# Calculate the total area and the area by strata
+nafo.strata$area <- st_area(nafo.strata) %>% units::set_units("km^2") %>% as.numeric()
+tot.area <- sum(nafo.strata$area) # This gets the same number as using st_area(survey.domain) so this is the total area of the survey domain
+# Now we calculate the proportion of the total area that each strata covers
+nafo.strata$p.area <-nafo.strata$area/tot.area
+
+```
+
+
+
+```{r paras-table, echo=F}
+
+# Now some derived parameters based on the area we are studying and the inputs provided at the top.
+m2.to.km2 <- 1e-6 # convert from m2 to km2
+area.swept <- area.swept.m*m2.to.km2 # Convert area swept by each tow into km²
+tot.towable.area <- tot.area / area.swept # This is the total possible number of tows one could do in the entire area.
+
+
+# Let's get all the parameters formatted nicely for a table so we can see them
+input.paras <- data.frame(Parameter = c("Number of Tows ", 
+                                       "Simulated Catchability",
+                                       "Mean Simulated Natural Mortality",
+                                       "Area swept by a tow",
+                                       "Survey Design",
+                                       "Median of Catchability Prior",
+                                       "Median of Natural Mortality Prior"),
+                         Value     = c( n.tows,
+                                        catchability,
+                                        m.mn,
+                                        paste(area.swept.m,"m²"),
+                                        surv.dist,
+                                        signif(median(rbeta(10000,q.prior$a,q.prior$b)),digits =2),
+                                        signif(median(rbeta(10000,m.prior$a,m.prior$b)),digits = 2)))
+
+knitr::kable(input.paras,booktabs=T, caption = "A Table of your input values for the current run of your simulation")
+```
+
+
+
+```{r rand-field,echo=F,message=F,warning=F}
+# So there are 1399 points, so this returns it all in one big smoogle that we need to extract ourselves.
+# It appears that there is some auto-regressive component to the field as there is correlation through time.
+# This step is slow, so I'm only going to do the one realization of the random field rather than remake the field for each simulation
+# Ideally we'd have a new suite of random fields for each realization.
+yrs <- 1990:2021
+n.years <- length(yrs)
+
+centroids <- st_centroid(survey.grid)# %>% data.frame()
+cent.split <- centroids %>% dplyr::summarise(lat = unlist(map(centroids$survey.grid,1)),
+                                      long = unlist(map(centroids$survey.grid,2)))
+
+# Now simulate the field.
+gmrfs <- RFsimulate(model = RMgauss(var=1, scale =1), x=cent.split$lat, y=cent.split$long, grid =F, T = yrs)
+rec.gmrfs <- RFsimulate(model = RMgauss(var=0.4, scale =0.5), x=cent.split$lat, y=cent.split$long, grid =F, T = yrs)
+# Make it an SF object
+gmrfs.sf <- st_as_sf(gmrfs, crs = 4326)
+rec.gmrfs.sf <- st_as_sf(rec.gmrfs, crs = 4326)
+# This extracts the year data from the SP object which we bind to our data.
+gmrfs.sf$years <- gmrfs@coords[,3]
+st_crs(gmrfs.sf) <- 4326
+rec.gmrfs.sf$years <- rec.gmrfs@coords[,3]
+st_crs(rec.gmrfs.sf) <- 4326
+# ggplot(gmrfs.sf) + geom_sf(aes(fill = variable1,color=variable1),size=3) + scale_fill_viridis_b() + scale_color_viridis_b() + facet_wrap(~years)
+# ggplot(rec.gmrfs.sf) + geom_sf(aes(fill = variable1,color=variable1),size=3) + scale_fill_viridis_b() + scale_color_viridis_b() + facet_wrap(~years)
+```
+
+
+<!-- So we have a method to generate random fields so now I want to generate the 'real' biomass time series used for the analysis -->
+
+```{r B-sim, echo=F,message=F, warning=F}
+
+# Set up or parameters, this seems like a pretty stable set of parameters
+g.mn   <- 1.1
+gr.mn <- 1.4
+E.mn  <- 0.15
+B <- initial.biomass # The initial B
+R.mn <- rec.biomass # The average number of recruits over time period
+
+
+C <- NA # The catch
+B.tmp <- NA # Initializing the Biomass, this is an intermediate B value
+# Here we generate a distribution of data we can sample from using various distributions
+R.samp <- betaset('st.beta',R.mn,R.mn^2,0,1e6)
+m.samp <- betaset('beta',m.mn,0.005,0.1,0.4)
+E.samp <- betaset('beta',E.mn,0.005,0.1,0.4)
+G.samp <- betaset('st.beta',g.mn,0.005,0.5,2)
+GR.samp <- betaset('st.beta',gr.mn,0.01,1,2.5)
+
+# Now we sample from the above distributions to get estimates of these variables for each year.
+R <- sample(R.samp,n.years,replace=T)
+E <- sample(E.samp,n.years,replace=T)
+M <- sample(m.samp,n.years,replace=T)
+G <- sample(G.samp,n.years,replace=T)
+GR <- sample(GR.samp,n.years,replace=T)
+
+for(i in 1:n.years)
+{
+  if(i == 1) 
+  {
+    # Here we are handling catch and biomass a bit differently then below, in first year we set the biomass and then remove the catch from that
+    # This is really just being done to get a year '0' catch and biomass, might not even use this in the end, we'll see
+    C[i] <- B[i] * E[i]
+  }
+    
+  if(i > 1)
+  {
+    # Here is the Delay Difference model, using the above inputs
+    B.tmp[i] <- (B[i-1])*exp(-M[i])*G[i] + R[i-1]*exp(-M[i])*GR[i]
+    C[i] <-  B.tmp[i] * E[i] # This gets our actual catch
+    B[i] <- B.tmp[i] -C[i] # This gets our actual biomass (after the fishery catch is removed)
+    
+  }
+
+}# end the for loop
+# And save the output
+mod.actual <- data.frame(biomass = B,
+                         catch = C,
+                         exploitation.rate = E,
+                         natural.mort = M,
+                         growth.adults = G,
+                         recruits  = R,
+                         growth.recruits = GR,
+                         years = yrs)
+
+
+```
+
+
+```{r B-distribute, echo=F, message=FALSE, warning=FALSE}
+# Here we are distributing the biomass across the area according to the Gaussian Markov Random Field 
+
+surv.dat <- NULL
+samp.bm.dat <- NULL
+samp.rec.dat <- NULL
+bm.est.dat <- NULL
+rec.est.dat <- NULL
+
+for(s in 1:n.realizations)
+{
+# Get the biomass distribution across the area
+bm.dat <- data.frame(years = yrs, 
+                     tot.biomass = mod.actual$biomass,mn.bm.dens = mod.actual$biomass/tot.area)
+
+gmrfs.bm <- st_join(survey.grid,gmrfs.sf)
+gmrfs.bm <- left_join(gmrfs.bm,bm.dat,by="years")
+# Now we spread the biomass across the area based on the random field.
+gmrfs.bm$bm.dens <- exp(log(gmrfs.bm$mn.bm.dens) + gmrfs.bm$variable1)
+# And have fun calculating biomasses
+gmrfs.bm$grid.area <- gmrfs.bm %>% st_area() %>% units::set_units("km^2") %>% as.numeric()
+gmrfs.bm$biomass.cell <- gmrfs.bm$grid.area*gmrfs.bm$bm.dens
+gmrfs.bm <- gmrfs.bm %>% dplyr::group_by(years) %>% dplyr::mutate(tmp.biomass = sum(biomass.cell))
+# Now we adjust it back to our initial biomass
+gmrfs.bm$biomass.cell <- gmrfs.bm$biomass.cell*gmrfs.bm$tot.biomass/gmrfs.bm$tmp.biomass
+gmrfs.bm$bm.dens <- gmrfs.bm$biomass.cell/gmrfs.bm$grid.area
+
+# Now repeat the same things for the recruit field
+rec.dat <- data.frame(years = yrs, 
+                      tot.biomass = mod.actual$recruits,mn.bm.dens = mod.actual$recruits/tot.area)
+
+gmrfs.rec <- st_join(survey.grid,rec.gmrfs.sf)
+gmrfs.rec <- left_join(gmrfs.rec,rec.dat,by="years")
+
+gmrfs.rec$bm.dens <- exp(log(gmrfs.rec$mn.bm.dens) + gmrfs.rec$variable1)
+
+gmrfs.rec$grid.area <- gmrfs.rec %>% st_area() %>% units::set_units("km^2") %>% as.numeric()
+gmrfs.rec$biomass.cell <- gmrfs.rec$grid.area*gmrfs.rec$bm.dens
+gmrfs.rec <- gmrfs.rec %>% dplyr::group_by(years) %>% dplyr::mutate(tmp.biomass = sum(biomass.cell))
+# Now we adjust it back to our initial biomass
+gmrfs.rec$biomass.cell <- gmrfs.rec$biomass.cell*gmrfs.rec$tot.biomass/gmrfs.rec$tmp.biomass
+gmrfs.rec$bm.dens <- gmrfs.rec$biomass.cell/gmrfs.rec$grid.area
+
+bm.res <- gmrfs.bm
+rec.res <- gmrfs.rec
+
+
+# So now we should sample from our area. Given last weeks results we will use both a random sample of the area each year and a stratified survey using the NAFO grid.  
+#Let's see if one does better than the other at this.
+
+samp.bm.tmp <- NULL
+samp.rec.tmp <- NULL
+surv.tmp <- NULL
+rec.est.tmp <- NULL
+bm.est.tmp <- NULL
+
+# Now we generate a different sample each year, so repeat this n.years times
+for(i in 1:n.years) 
+{
+  
+  # This years biomass fields...
+  bm.tmp <- bm.res %>% dplyr::filter(years == yrs[i])
+  rec.tmp <- rec.res %>% dplyr::filter(years == yrs[i])
+  
+  if(surv.dist == "NAFO")
+  {
+    nafo.strata$years <- yrs[i]
+    nafo.strata$stations <- nsplit(nafo.strata$p.area, n.tows) 
+    # Now calculate the area swept in each of the areas, use a few metrics here
+    nafo.strata <- nafo.strata %>% dplyr::mutate(area.surveyed = stations * area.swept,
+                                             towable.area = area/area.swept)
+
+    surv.tmp[[i]] <- nafo.strata
+    # Now we can sample from the above each year, want this to be the same for recruits and biomass
+    samp.bm.tmp[[i]] <- samp.rec.tmp[[i]] <- st_sample(surv.tmp[[i]], size = nafo.strata$stations,type = 'random', exact = T) %>%
+                          st_sf('ID' = seq(length(.)), 'geometry' = .) %>%
+                          st_intersection(., nafo.strata)
+    
+    # Now combo with the biomass data
+    samp.bm.tmp[[i]] <- st_join(samp.bm.tmp[[i]],bm.tmp %>% dplyr::select(!strata))
+    
+    samp.bm.tmp[[i]]$sample.bm.per.tow <- rlnorm(n.tows,log(catchability*samp.bm.tmp[[i]]$bm.dens*area.swept*1000),0.25)
+    # Biomass density in kg/km^2
+    samp.bm.tmp[[i]]$sample.bm.dens <- samp.bm.tmp[[i]]$sample.bm.per.tow/area.swept
+    # Now things get much more complex as we have to get stratified estimates.
+    #First we get the mean for each strata, the 'id' field is strata at the moment
+    strata.res <- samp.bm.tmp[[i]] %>% dplyr::group_by(strata,area,p.area,stations,area.surveyed,towable.area) %>% 
+                                    dplyr::summarise(mn.ptow = mean(sample.bm.per.tow),
+                                                     var.ptow = var(sample.bm.per.tow))
+    # Now we take these strata means and account for the area in each strata.  This is the biomass per tow
+    strata.res  <- strata.res %>% dplyr::mutate(mn.pt.by.pa = mn.ptow*p.area)
+    bm.per.tow <- sum(strata.res$mn.pt.by.pa)
+    # Calculate the survey standard error.  In words... The Total number of towable units in a strata * difference 
+    # So all the area calculations are done in 1a and 2a, then we multiply by the variance, then we have to divide by the number of stations
+    se.calc.1 <- ((strata.res$area * (strata.res$area-strata.res$area.surveyed))) # Total area * Total area not surveyed
+    se.calc.2 <- se.calc.1/sum(strata.res$area)^2 # Now we divide the above by the total area squared.  
+    se.calc.3 <- se.calc.2 * strata.res$var.ptow # Then we multiply that by the variance 
+    se.survey <- sum(se.calc.3/strata.res$stations,na.rm=T)^0.5 # then we divide this total by the number of stations, add up that number and take square root.
+      
+    # Now we need to know the difference between the area towed and the possible area towed, needed to figure out DF later...
+    #ah <- (strata.res$towable.area * (strata.res$towable.area - strata.res$stations))/strata.res$stations
+    area.df <- (strata.res$area * (strata.res$area - strata.res$area.surveyed))/strata.res$area.surveyed
+    # Degrees of freedom
+    df <- (sum(area.df * strata.res$var.ptow, na.rm = TRUE)^2)/(sum(((area.df * strata.res$var.ptow)^2)/(strata.res$stations - 1), na.rm = TRUE))
+    # And the size of our CI around the mean estimate (95% CI)
+    ci.per.tow <- bm.per.tow + (c(qt(0.05/2, df), -qt(0.05/2, df)) * se.survey)
+    # Now scale up to whole bank, all these calculations are done per tow, so how many 'tows' could one do in the whole region?
+    bm.tot <- bm.per.tow*tot.towable.area /1000 # Note we are in kg/tow, reset to tonnes for whole bank
+    ci.tot <- ci.per.tow * tot.towable.area /1000 # Note we are in kg/tow, reset to tonnes for whole bank
+    # Q-corrected
+    bm.tot.q.cor <- bm.tot/catchability
+    ci.tot.q.cor <- ci.tot/catchability
+    # Put it into a dataframe
+    bm.est.tmp[[i]] <- data.frame(biomass = c(bm.per.tow,bm.tot,bm.tot.q.cor),
+                           lci = c(min(ci.per.tow),min(ci.tot),min(ci.tot.q.cor)),
+                           uci = c(max(ci.per.tow),max(ci.tot),max(ci.tot.q.cor)),
+                           metric = c("Per Tow","Survey","Q-Corrected"),
+                           survey = rep('NAFO Strata',3),
+                           simulation = rep(s,3),
+                           years = yrs[i])
+    # Now do the same thing to get the recruit biomass estimates from the survey
+    samp.rec.tmp[[i]] <- st_join(samp.rec.tmp[[i]],rec.tmp %>% dplyr::select(!strata))
+    
+    samp.rec.tmp[[i]]$sample.bm.per.tow <- rlnorm(n.tows,log(catchability*samp.rec.tmp[[i]]$bm.dens*area.swept*1000),0.25)
+    # Biomass density in kg/km^2
+    samp.rec.tmp[[i]]$sample.bm.dens <- samp.rec.tmp[[i]]$sample.bm.per.tow/area.swept
+    # Now things get much more complex as we have to get stratified estimates.
+    #First we get the mean for each strata, the 'id' field is strata at the moment
+    strata.res <- samp.rec.tmp[[i]] %>% dplyr::group_by(strata,area,p.area,stations,area.surveyed,towable.area) %>% 
+                                    dplyr::summarise(mn.ptow = mean(sample.bm.per.tow),
+                                                     var.ptow = var(sample.bm.per.tow))
+    # Now we take these strata means and account for the area in each strata.  This is the biomass per tow
+    strata.res  <- strata.res %>% dplyr::mutate(mn.pt.by.pa = mn.ptow*p.area)
+    bm.per.tow <- sum(strata.res$mn.pt.by.pa)
+    # Calculate the survey standard error.  In words... The Total number of towable units in a strata * difference 
+    # So all the area calculations are done in 1a and 2a, then we multiply by the variance, then we have to divide by the number of stations
+    se.calc.1 <- ((strata.res$area * (strata.res$area-strata.res$area.surveyed))) # Total area * Total area not surveyed
+    se.calc.2 <- se.calc.1/sum(strata.res$area)^2 # Now we divide the above by the total area squared.  
+    se.calc.3 <- se.calc.2 * strata.res$var.ptow # Then we multiply that by the variance 
+    se.survey <- sum(se.calc.3/strata.res$stations,na.rm=T)^0.5 # then we divide this total by the number of stations, add up that number and take square root.
+      
+    # Now we need to know the difference between the area towed and the possible area towed, needed to figure out DF later...
+    #ah <- (strata.res$towable.area * (strata.res$towable.area - strata.res$stations))/strata.res$stations
+    area.df <- (strata.res$area * (strata.res$area - strata.res$area.surveyed))/strata.res$area.surveyed
+    # Degrees of freedom
+    df <- (sum(area.df * strata.res$var.ptow, na.rm = TRUE)^2)/(sum(((area.df * strata.res$var.ptow)^2)/(strata.res$stations - 1), na.rm = TRUE))
+    # And the size of our CI around the mean estimate (95% CI)
+    ci.per.tow <- bm.per.tow + (c(qt(0.05/2, df), -qt(0.05/2, df)) * se.survey)
+    # Now scale up to whole bank, all these calculations are done per tow, so how many 'tows' could one do in the whole region?
+    bm.tot <- bm.per.tow*tot.towable.area /1000 # Note we are in kg/tow, reset to tonnes for whole bank
+    ci.tot <- ci.per.tow * tot.towable.area /1000 # Note we are in kg/tow, reset to tonnes for whole bank
+    # Q-corrected
+    bm.tot.q.cor <- bm.tot/catchability
+    ci.tot.q.cor <- ci.tot/catchability
+    # Put it into a dataframe
+    rec.est.tmp[[i]] <- data.frame(biomass = c(bm.per.tow,bm.tot,bm.tot.q.cor),
+                           lci = c(min(ci.per.tow),min(ci.tot),min(ci.tot.q.cor)),
+                           uci = c(max(ci.per.tow),max(ci.tot),max(ci.tot.q.cor)),
+                           metric = c("Per Tow","Survey","Q-Corrected"),
+                           survey = rep('NAFO Strata',3),
+                           simulation = rep(s,3),
+                           years = yrs[i])
+  } # end if "NAFO"
+  
+  
+  if(surv.dist == "Random")
+  {
+    # And we can get our random sample each year
+    surv.tmp[[i]] <- survey.domain %>% st_sample(size = n.tows) %>% st_sf()
+    surv.tmp[[i]]$id <- 1:n.tows
+    
+    # Now do the biomass of adults
+    samp.bm.tmp[[i]] <- st_join(surv.tmp[[i]],bm.tmp)
+    # Also add the years to the random sample list
+    samp.bm.tmp[[i]]$years <- yrs[i]
+    # This is biomass in KG at the moment, just to make it make more sense.  Note the order of magnitude difference between the size of the stock and how many
+    # are caught in this survey
+    samp.bm.tmp[[i]]$sample.bm <- rlnorm(n.tows,log(catchability*  samp.bm.tmp[[i]]$bm.dens*area.swept*1000),0.25)
+    # ggplot() + geom_sf(data = rand.samp.dat, aes(fill = sample.bm,color=sample.bm)) + 
+    #            geom_sf(data=survey.domain, fill = NA) +
+    #            scale_fill_viridis_b() + scale_color_viridis_b()
+    
+    # Now from here we use standard survey math to get a survey estimated biomass.  Steal from Stephens Simple survey code because i know that is done right :-)
+    # The basic calculations for this are very straightforward, the average biomass per tow along with uncertainies
+    bm.per.tow <- mean(  samp.bm.tmp[[i]]$sample.bm)
+    se.per.tow <- sd(  samp.bm.tmp[[i]]$sample.bm)/sqrt(n.tows)
+    # Our DF here is the number of stations
+    ci.per.tow <- bm.per.tow + (c(qt(0.05/2, n.tows), -qt(0.05/2, n.tows)) * se.per.tow)
+    
+    # Alternatively, we just immediately can scale up to total area..
+    bm.tot <- bm.per.tow* tot.towable.area /1000
+    ci.tot <- ci.per.tow* tot.towable.area /1000
+    
+    # And here is our 'q corrected' survey biomass estimate from the random survey.
+    bm.tot.q.cor <- bm.tot/catchability
+    ci.tot.q.cor <- ci.tot/catchability
+    bm.est.tmp[[i]] <- data.frame(biomass = c(bm.per.tow,bm.tot,bm.tot.q.cor),
+                           lci = c(min(ci.per.tow),min(ci.tot),min(ci.tot.q.cor)),
+                           uci = c(max(ci.per.tow),max(ci.tot),max(ci.tot.q.cor)),
+                           metric = c("Per Tow","Survey","Q-Corrected"),
+                           survey = rep('Random',3),
+                           simulation = rep(s,3),
+                           years = yrs[i])
+    
+    
+    # Now for the recruits
+    samp.rec.tmp[[i]] <- st_join(surv.tmp[[i]],rec.tmp)
+    # Also add the years to the random sample list
+    samp.rec.tmp[[i]]$years <- yrs[i]
+    # This is biomass in KG at the moment, just to make it make more sense.  Note the order of magnitude difference between the size of the stock and how many
+    # are caught in this survey
+    samp.rec.tmp[[i]]$sample.bm <- rlnorm(n.tows,log(catchability*  samp.rec.tmp[[i]]$bm.dens*area.swept*1000),0.25)
+    # ggplot() + geom_sf(data = rand.samp.dat, aes(fill = sample.bm,color=sample.bm)) + 
+    #            geom_sf(data=survey.domain, fill = NA) +
+    #            scale_fill_viridis_b() + scale_color_viridis_b()
+    
+    # Now from here we use standard survey math to get a survey estimated biomass.  Steal from Stephens Simple survey code because i know that is done right :-)
+    # The basic calculations for this are very straightforward, the average biomass per tow along with uncertainies
+    bm.per.tow <- mean(  samp.rec.tmp[[i]]$sample.bm)
+    se.per.tow <- sd(  samp.rec.tmp[[i]]$sample.bm)/sqrt(n.tows)
+    # Our DF here is the number of stations
+    ci.per.tow <- bm.per.tow + (c(qt(0.05/2, n.tows), -qt(0.05/2, n.tows)) * se.per.tow)
+    
+    # Alternatively, we just immediately can scale up to total area..
+    bm.tot <- bm.per.tow* tot.towable.area /1000
+    ci.tot <- ci.per.tow* tot.towable.area /1000
+    
+    # And here is our 'q corrected' survey biomass estimate from the random survey.
+    bm.tot.q.cor <- bm.tot/catchability
+    ci.tot.q.cor <- ci.tot/catchability
+    rec.est.tmp[[i]] <- data.frame(biomass = c(bm.per.tow,bm.tot,bm.tot.q.cor),
+                           lci = c(min(ci.per.tow),min(ci.tot),min(ci.tot.q.cor)),
+                           uci = c(max(ci.per.tow),max(ci.tot),max(ci.tot.q.cor)),
+                           metric = c("Per Tow","Survey","Q-Corrected"),
+                           survey = rep('Random',3),
+                           simulation = rep(s,3),
+                           years = yrs[i])
+    
+  } # End if == "Random"
+} # end the Years for loop
+
+surv.dat[[s]] <- do.call("rbind",surv.tmp)
+samp.bm.dat[[s]] <- do.call("rbind",samp.bm.tmp)
+samp.rec.dat[[s]] <- do.call("rbind",samp.bm.tmp)
+bm.est.dat[[s]] <- do.call("rbind",bm.est.tmp)
+rec.est.dat[[s]] <- do.call("rbind",rec.est.tmp)
+# Note that we can get negative values for the LCI because we are assuming the bm.per.tow is normally distributed.  These are truncated to 0's here...
+# There are way better ways to deal with this (e.g. log-normal, but that distro is a pain...)
+bm.est.dat[[s]]$lci[bm.est.dat$lci <0] <- 0
+} # end the Simulation Loop
+```
+
+How long did it take to run the model?
+
+```{r SA-model, echo=F,message=F, warning=F}
+
+#Now we have all our model inputs so we can run the Stock Assessment Model, note that we just run this on the 'first' simulated data set. 
+#This is simply done due to time constraints, we could easily modify this to run the most for all simulations, but that would take a while!
+
+# Get the model data into the format needed for the model
+mod.dat <- data.frame(I = bm.est.dat[[1]] %>% dplyr::filter(metric == "Survey") %>% dplyr::select(biomass) %>% unname(), 
+                      IR = rec.est.dat[[1]] %>% dplyr::filter(metric == "Survey") %>% dplyr::select(biomass) %>% unname(),
+                      G = mod.actual$growth.adults,
+                      GR = mod.actual$growth.recruits,
+                      C = mod.actual$catch,
+                      year = yrs)
+
+# For this assignment we don't touch these, but you certainly could explore these...
+r.prior = data.frame(a=rec.biomass,b=1000)
+b0.prior= data.frame(a=initial.biomass,b=0.5)
+
+# Run the model
+res <- run_model(mod.dat = mod.dat, nchains=6,niter = niter,nburn = 0.25*niter,
+          m.prior = m.prior,q.prior = q.prior,
+          r.prior = r.prior, b0.prior = b0.prior)
+
+# Take the median from the distributions generated in our model.  Going to ignore uncertainty for this as that feels a bridge to far for one lecture
+mod.res <- data.frame(biomass = DD.out$median$B,
+                      recruits = DD.out$median$R,
+                      exploitation.rate = DD.out$median$mu,
+                      years = yrs)
+# The last year of recruits isn't really a thing as it isn't used in the model anywhere so we won't show it.
+mod.res$recruits[nrow(mod.res)] <- NA
+
+```
+
+So the first thing we want to look at is how well the survey indices for Biomass and Recruitment track the actual Biomass and Recruitment. To do this we need to account for the *catchability* of the stock in the survey. Since we *know* this value in this case we can create this plot to see how well our survey is capturing the underlying dynamics.  Each blue dot represents the realization for the specific year.
+
+```{r survey-sims-plts,echo=F,message=F,warning=F,fig.width= 11, fig.height= 8,fig.cap = "Time series of the survey biomass index from each realization (blue points) and the actual q-corrected biomass (thick grey line) used for the survey simulation."}
+
+# First the adult biomass survey index time series
+bm.surv <- do.call('rbind',bm.est.dat)
+bm.surv <- bm.surv %>% dplyr::filter(metric == "Survey")
+bm.surv$simulation <- as.factor(bm.surv$simulation)
+# Now the recruitment survey index time series
+rec.surv <- do.call('rbind',rec.est.dat)
+rec.surv <- rec.surv %>% dplyr::filter(metric == "Survey")
+rec.surv$simulation <- as.factor(rec.surv$simulation)
+
+
+# So let's plot the model actual biomass (q-corrected) against the survey index
+bm.surv.plt <- ggplot(mod.actual)  + geom_line(aes(y=biomass*catchability.sims,x = years),size=1.5,color='darkgrey') +
+                                     geom_point(data = bm.surv, aes(y = biomass, x = years, group = simulation),color="blue") +
+                                     ylab("Adult Biomass Index")+ xlab("") + theme_bw()
+
+
+rec.surv.plt <- ggplot(mod.actual) + geom_line(aes(y=recruits*catchability.sims,x = years),size=1.5,color='darkgrey') + 
+                                     geom_point(data = rec.surv, aes(y = biomass, x = years, group = simulation),color="blue") +
+                                     ylab("Recruit biomass Index")+ xlab("") + theme_bw()
+
+surv.sims.plt <- plot_grid(bm.surv.plt,rec.surv.plt,nrow=1)
+surv.sims.plt
+```
+
+
+```{r tab-surv-sum,echo=F}
+
+# How well is the survey doing at capturing the biomass for the area.
+surv.comp <- data.frame(mn.bmi.err = rep(NA,n.realizations),
+                        mn.abs.bmi.err = rep(NA,n.realizations),
+                        mn.rec.err = rep(NA,n.realizations),
+                        mn.abs.rec.err = rep(NA,n.realizations),
+                        per.bmi.err = rep(NA,n.realizations),
+                        per.abs.bmi.err = rep(NA,n.realizations),
+                        per.rec.err = rep(NA,n.realizations),
+                        per.abs.rec.err = rep(NA,n.realizations))
+for(i in 1:n.realizations)
+{
+surv.comp$mn.bmi.err[i] <- mean(bm.surv$biomass[bm.surv$simulation == i] - mod.actual$biomass*catchability.sims ,na.rm=T)
+surv.comp$mn.abs.bmi.err[i] <- mean(abs(bm.surv$biomass[bm.surv$simulation == i] - mod.actual$biomass*catchability.sims),na.rm=T)
+surv.comp$mn.rec.err[i] <- mean(rec.surv$biomass[bm.surv$simulation == i] - mod.actual$recruits*catchability.sims ,na.rm=T)
+surv.comp$mn.abs.rec.err[i] <- mean(abs(rec.surv$biomass[bm.surv$simulation == i]- mod.actual$recruits*catchability.sims),na.rm=T)
+
+surv.comp$per.bmi.err[i] <- mean((bm.surv$biomass[bm.surv$simulation == i] - mod.actual$biomass*catchability.sims)/mod.actual$biomass*catchability.sims *100 ,na.rm=T)
+surv.comp$per.abs.bmi.err[i] <- mean(abs((bm.surv$biomass[bm.surv$simulation == i] - mod.actual$biomass*catchability.sims)/mod.actual$biomass*catchability.sims *100),na.rm=T)
+surv.comp$per.rec.err[i] <- mean((rec.surv$biomass[bm.surv$simulation == i] - mod.actual$recruits*catchability.sims)/mod.actual$recruits*catchability.sims *100 ,na.rm=T)
+surv.comp$per.abs.rec.err[i] <- mean(abs((rec.surv$biomass[bm.surv$simulation == i]- mod.actual$recruits*catchability.sims)/mod.actual$recruits*catchability.sims *100 ),na.rm=T)
+}
+
+
+surv.tab.res <- data.frame(Comparsion = c("Mear Error Adult Biomass Index (Survey - Actual)",
+                                          "Mean Error Adult Biomass Index |Survey - Actual|",
+                                          "Absolute Mean Error Recruit Biomass Index (Survey - Actual)",
+                                          "Absolute Mean Error Recruit Biomass Index |Survey - Actual|"),
+                         Tonnes =     c(signif(mean(surv.comp$mn.bmi.err),digits=2),
+                                        signif(mean(surv.comp$mn.abs.bmi.err),digits=2),
+                                        signif(mean(surv.comp$mn.rec.err),digits=2),
+                                        signif(mean(surv.comp$mn.abs.rec.err),digits=2)),
+                         Percentage = c(signif(mean(surv.comp$per.bmi.err),digits=2),
+                                        signif(mean(surv.comp$per.abs.bmi.err),digits=2),
+                                        signif(mean(surv.comp$per.rec.err),digits=2),
+                                        signif(mean(surv.comp$per.abs.rec.err),digits=2)))
+
+knitr::kable(surv.tab.res,booktabs=T, caption = "A Table showing how well the survey biomass index estimates the acutal biomass index using various metrics")
+
+                         
+```
+
+Priors are essentially a guide for the model to help inform likely values for the parameters, the model can decide the value for the parameter is most likely very different from the prior. Sometimes they are well known sometimes they are not much more than an 'educated' guess, either way, if the parameter estimate is similar to the prior it is known as an *informative prior*.  In our example you should tweak the priors for catchability (*q*) and natural mortality (*m*) to see how these influence the estimate of both these parameters and the other variables/parameters in the model.  You should be thinking *are their consequences to getting these wrong and if so what are they*.
+
+```{r q-m-priors-posts,echo=F,message=F,warning=F,fig.cap = "The Prior and Posterior distributions for catchability and mortality.  The Prior distribution is approximated by the line, while the model realizations (aka Posteriors) are given by the histogram (bars). In the left figure, the blue dashed line is the catchability (q) you defined for the simulations, this is a fixed unchanging value.  In the figure on the right, the red dashed line is the average natural mortality (m) you defined, note that natural mortality varies each year in our simulations, but our Stock Assessment Model (SAM) is constrained to estimate one m for the entire time series. "}
+
+
+# Get the posterior and priors for q and M
+q.post <- data.frame(Posterior = DD.out$sims.list$q, Prior = rbeta(length(DD.out$sims.list$q),q.prior$a,q.prior$b))
+m.post <- data.frame(Posterior = DD.out$sims.list$M, Prior = rbeta(length(DD.out$sims.list$M),m.prior$a,m.prior$b))
+q <- DD.out$median$q # Same as median(q.post$Posterior)
+m <- DD.out$median$M # Same as median(m.post$Posterior)
+
+# Here are the main output plots that should summarize everything that needs summarized for this
+plt.q <- ggplot(q.post) + geom_histogram(aes(Posterior),alpha = 0.5) + 
+                          geom_freqpoly(aes(Prior)) + xlab("Catchability") + 
+                          geom_vline(aes(xintercept = catchability.sims),color='blue',size=1.,linetype = 'dashed')+
+                          ylab("") + theme_bw()
+                          
+plt.m <- ggplot(m.post) + geom_histogram(aes(Posterior),alpha = 0.5) + 
+                          geom_freqpoly(aes(Prior)) + xlab("Natural Mortality") + 
+                          geom_vline(aes(xintercept = mean.nat.mort.sims),color='firebrick2',size=1.,linetype = 'dashed')+
+                          ylab("") + theme_bw()
+
+post.plt <- plot_grid(plt.q,plt.m,nrow=1)
+post.plt
+
+```
+
+
+Here are some useful biomass figures.  The first is the q-corrected Model Estimated biomass compared to the *survey* biomass index.  The second is the Stock Assessment estimated biomass compared to the *Actual* simulated biomass. In the bottom panel we have the same data but calculated the percent difference between the "Actual Biomass". **Recall, the Actual simulated biomass would be 'unknown' in a real world Stock Assessment, here because we are just doing simulations we can use this as a check of how well our models have done**.  
+
+So how well is the Stock Assessment Model (SAM) doing at recreating the survey adult and recruit biomass indicies?
+
+
+```{r bm-plts,echo=F,message=F,warning=F,fig.cap = "The SAM adult biomass results compared to (TOP LEFT) the survey index adult biomass, here we have q-corrected the SAM adult biomass (the grey line) and compared it to the survey adult biomass index. (TOP RIGHT) we have the SAM adult biomass (grey line) compared to the Actual Adult Biomass. (BOTTOM LEFT) is the percent difference between the SAM adult biomass and the survey index adult biomass.  (BOTTOM RIGHT) is the percent difference between the SAM adult biomass and the Actual adult biomass. "}
+
+plt.SA.vs.SI.bm <- ggplot(mod.dat) + geom_line(data = mod.res,aes(y=biomass*catchability.sims,x=years),size=1.5,color='darkgrey') +
+                                     geom_point(aes(x=year,y=I),size=1.5,color='blue') + 
+                                     xlab("")+ ylab("Adult Biomass Index (tonnes)")
+  
+plt.SA.vs.Act.bm <- ggplot(mod.actual) + geom_line(data = mod.res,aes(y=biomass,x=years),size=1.5,color='darkgrey') +
+                                         geom_point(aes(x=years,y=biomass),size=1.5,color='blue') + 
+                                         xlab('') + ylab("Adult Biomass (tonnes)") + theme_bw()
+
+# Make the data for the percentage difference plots....
+per.dat <- data.frame(bm.surv.per = ((mod.res$biomass*catchability.sims  - mod.dat$I)/mod.dat$I)*100,
+                      bm.mod.per = ((mod.res$biomass  - mod.actual$biomass)/mod.actual$biomass)*100,
+                      years = mod.res$years)
+
+plt.SA.vs.SI.bm.percent <- ggplot(per.dat) + geom_line(aes(y=bm.surv.per,x=years),size=1.5,color='black') +
+                                     xlab("")+ ylab("Difference (%)")
+  
+plt.SA.vs.Act.bm.percent <- ggplot(per.dat) + geom_line(aes(y=bm.mod.per,x=years),size=1.5,color='black') +
+                                         xlab('') + ylab("Difference (%)") + theme_bw()
+
+
+bm.plts <- plot_grid(plt.SA.vs.SI.bm,plt.SA.vs.Act.bm,
+                     plt.SA.vs.SI.bm.percent,plt.SA.vs.Act.bm.percent,nrow=2)
+bm.plts
+
+```
+
+```{r tab-bm-sum,echo=F}
+
+# The average difference from 'reality' using the biomass estimates from the survey data and comparing to the model
+# and comparing the biomasses estimates from the actual data and comparing to the model.
+bm.tab.res <- data.frame(Comparsion = c("Mean Adult Biomass (SAM - Survey)",
+                                        "Mean Adult Biomass (SAM - Actual)",
+                                        "Mean Adult Biomass |SAM - Survey|",
+                                        "Mean Adult Biomass |SAM - Actual|"),
+                         Tonnes =     c(signif(mean(mod.res$biomass*catchability.sims  - mod.dat$I),digits=2),
+                                        signif(mean(mod.res$biomass  - mod.actual$biomass),digits=2),
+                                        signif(mean(abs(mod.res$biomass*catchability.sims  - mod.dat$I)),digits=2),
+                                        signif(mean(abs(mod.res$biomass  - mod.actual$biomass)),digits=2)),
+                         Percentage = c(signif(mean(per.dat$bm.surv.per),digits=2),
+                                        signif(mean(per.dat$bm.mod.per),digits=2),
+                                        signif(mean(abs(per.dat$bm.surv.per)),digits=2),
+                                        signif(mean(abs(per.dat$bm.mod.per)),digits=2)))
+
+knitr::kable(bm.tab.res,booktabs=T, caption = "A Table showing how well SAM adult biomass estiamtes align with the input survey data and the acutal adult biomass")
+
+                         
+```
+
+
+\newpage
+
+```{r rec-plts,echo=F,message=F,warning=F,fig.width=8.5, fig.height =8.5,fig.cap = "The SAM recruit biomass results compared to (TOP LEFT) the survey index recruit biomass, here we have q-corrected the SAM recruit biomass (the grey line) and compared it to the survey recruit biomass index. In (TOP RIGHT) we have the SAM recruit biomass (grey line) compared to the actual recruit Biomass. (BOTTOM LEFT) is the percent difference between the SAM Recruit biomass and the survey index Recruit biomass.  (BOTTOM RIGHT) is the percent difference between the SAM Recruit biomass and the Actual Recruit biomass."}
+
+plt.SA.vs.SI.rec <- ggplot(mod.dat) + geom_line(data = mod.res,aes(y=recruits*catchability.sims,x=years),size=1.5,color='darkgrey') +
+                                     geom_point(aes(x=year,y=IR),size=1.5,color='blue') + 
+                                     xlab("")+ ylab("Difference between Recruit Biomass and SAM (%)")
+  
+plt.SA.vs.Act.rec <- ggplot(mod.actual) + geom_line(data = mod.res,aes(y=recruits,x=years),size=1.5,color='darkgrey') +
+                                         geom_point(aes(x=years,y=recruits),size=1.5,color='blue') + 
+                                         xlab('') + ylab("Difference between Actual Recruit Biomass and SAM (%)") + theme_bw()
+
+# Make the data for the percentage difference plots....
+per.rec.dat <- data.frame(rec.surv.per = ((mod.res$recruits*catchability.sims  - mod.dat$IR)/mod.dat$IR)*100,
+                      rec.mod.per = ((mod.res$recruits  - mod.actual$recruits)/mod.actual$recruits)*100,
+                      years = mod.res$years)
+
+plt.SA.vs.SI.rec.percent <- ggplot(per.rec.dat) + geom_line(aes(y=rec.surv.per,x=years),size=1.5,color='black') +
+                                     xlab("")+ ylab("Difference  (%)")
+  
+plt.SA.vs.Act.rec.percent <- ggplot(per.rec.dat) + geom_line(aes(y=rec.mod.per,x=years),size=1.5,color='black') +
+                                         xlab('') + ylab("Difference (%)") + theme_bw()
+
+
+rec.plts <- plot_grid(plt.SA.vs.SI.rec,plt.SA.vs.Act.rec,
+                      plt.SA.vs.SI.rec.percent,plt.SA.vs.Act.rec.percent,nrow=2)
+rec.plts
+
+```
+
+\newpage
+
+```{r tab-rec-sum,echo=F}
+
+# The average difference from 'reality' using the biomass estimates from the survey data and comparing to the model
+# and comparing the biomasses estimates from the actual data and comparing to the model.
+rec.tab.res <- data.frame(Comparsion = c("Mean Recruit Biomass (SAM - Survey)",
+                                        "Mean Recruit Biomass (SAM - Actual)",
+                                        "Mean Recruit Biomass Error |SAM - Survey|",
+                                        "Mean Recruit Biomass Error |SAM - Actual|"),
+                         Tonnes =     c(signif(mean(mod.res$recruits*catchability.sims  - mod.dat$IR,na.rm=T),digits=2),
+                                        signif(mean(mod.res$recruits  - mod.actual$recruits,na.rm=T),digits=2),
+                                        signif(mean(abs(mod.res$recruits*catchability.sims  - mod.dat$IR),na.rm=T),digits=2),
+                                        signif(mean(abs(mod.res$recruits  - mod.actual$recruits),na.rm=T),digits=2)),
+                         Percentage = c(signif(mean(per.rec.dat$rec.surv.per,na.rm=T),digits=2),
+                                        signif(mean(per.rec.dat$rec.mod.per,na.rm=T),digits=2),
+                                        signif(mean(abs(per.rec.dat$rec.surv.per),na.rm=T),digits=2),
+                                        signif(mean(abs(per.rec.dat$rec.mod.per),na.rm=T),digits=2)))
+
+knitr::kable(rec.tab.res,booktabs=T, caption = "A Table showing how well SAM recruit biomass estiamtes align with the input survey data and the acutal recruit biomass")
+
+                         
+```
+
+
+Next we can look at the actual natural mortality and compare it to the mean of our prior distribution.  *Hint* Think about how the variability in the actual natural mortality that isn't being captured in our model would impact the model results.
+
+```{r nat-mort-plt,echo=F,message=F,warning=F,fig.cap = "The actual natural mortality (blue line) time series, the grey dashed line is the median of the natural mortality estimate from the SAM."}
+
+nat.mort.ts.plt <- ggplot(mod.actual) + geom_line(aes(x=years,y=natural.mort),size=1.5,color='blue') + 
+                                        geom_hline(aes(yintercept = DD.out$median$M),size=1.5,linetype='dashed',color='darkgrey') + 
+                                        ylab("Natural Mortality") + xlab("") + theme_bw()
+nat.mort.ts.plt
+```
+
+We can also explore how different the exploitation rate from the SAM model is to the actual exploitation rate.
+
+
+```{r exp-plt,echo=F,message=F,warning=F,fig.cap = "The SAM exploitation rate time series (grey line) compared to the actual exploitation rate (blue points)."}
+
+exp.plt <- ggplot(mod.actual) +  geom_line(data = mod.res,aes(y=exploitation.rate,x=years),size=1.5,color='darkgrey') + 
+                      geom_point(aes(x=years,y=exploitation.rate),size=1.5,color='blue') + 
+                      ylab("Exploitation") + xlab("") + theme_bw()
+exp.plt
+```
+
+
+
+# Terms and Jargon 
+
+*Important*: Pretty much all of these 'definitions' are simplifications that serve our purposes, but if you go deeper into Fisheries Science you will see that it is often much more complex than this.
+
+- *Adults:* Mature individuals that are targeted by the fishery
+- *Recruits:* Individuals that will mature and be targeted by the fishery next year
+- *Biomass:* The Abundance of individual in a certain size/age class multiplied by the weight of those indivduals.  Usually the weight is taken as some sort of average of the population
+- *Growth:* The increase in size (mass) of a class of fish in a given year
+
+- *Survey:* The process in which a stock is sampled to get an estimate of population status (e.g. abundance index) and life history parameters (e.g. growth)
+- *Survey Design:* The method used to carry our a survey.  For our purposes this includes the number of sampling stations and the type of stratification (if any) to use.
+- *Stratification:* A method used to divide up a survey into areas with 'similar' characteristics. If done properly it will reduce the uncertainty of your survey indices compared to a survey in which the stations are simply randomly allocated.
+
+- *Stock Assessment Model:* A model which uses data from a survey and/or fishery data to get metric(s) of population status (usually an estimate of stock biomass)
+- *Parameter:* An input to or output from a model, generally parameters are 'fixed' values (e.g catchability is a parameter).
+- *Variable:* An input to or output from a model, generally variables can vary (e.g. biomass is a variable).
+- *Prior:* Used to inform your model what the most likely range of values are for a particular parameter. This is a "Bayesian statistics" concept.  
+- *Catchability:* The proportion of the individuals in the area sampled that are captured by a survey tow 
+
+- *Natural Mortality:* The proportion of the population that dies from 'natural causes' in a given year.
+- *Exploitation:* The proportion of the population that is captured by the fishery in a given year.
+- *Simulation:* Process of using certain mathematical/statistical equations and tools to develop data and test the impact of varying inputs and assumptions on the end results. Stochastic simulations incorporate statistical uncertainty in model parameters to generate multiple outcomes by accounting for various types of uncertainty.
+- *Realizations:* When running a stochastic simulation a realization is one set of results, there can be many realizations.
+

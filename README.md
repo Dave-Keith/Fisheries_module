@@ -33,7 +33,7 @@ if(length(new.packages)>0)
 # This is needed for our maps.
 devtools::install_github('ropensci/rnaturalearthhires')
 
-# You may/maynot need tinytex(), but once the above installations finsish, I'm suggesting that you install it.
+# You may/maynot need tinytex(), but once the above installations finish, I'm suggesting that you install it.
 tinytex::install_tinytex()
 # to uninstall TinyTeX, run tinytex::uninstall_tinytex() 
 
