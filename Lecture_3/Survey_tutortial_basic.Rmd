@@ -97,9 +97,9 @@ catchability <- 0.3 # What proportion of the population does survey tend to catc
 bm.dist <- c("Random","NAFO","Depth") 
 # Which Biomass distribution do you want [1] will be Random Survey, 2 will be NAFO survey, and 3 will be "Depth
 # You can change how the simulation distributes the biomass in the simulation through space.  This is generally too much!!
-bm.dist <- bm.dist[1] # This is biomass distributed randomly throughout the region
+#bm.dist <- bm.dist[1] # This is biomass distributed randomly throughout the region
 #bm.dist <- bm.dist[2] # This makes the biomass distribution be a function of the NAFO strata
-#bm.dist <- bm.dist[3] # This makes the biomass distribution being a function of depth
+bm.dist <- bm.dist[3] # This makes the biomass distribution being a function of depth
 
 # This changes the number of realizations you run, I suggest trying 1, 4, and 250 (250 will be slow!) to see if it changes your opinion
 n.realizations <- 50
@@ -785,9 +785,9 @@ if(n.realizations >=10)
 {
 h.lines <- rep(c(expected.bm.per.tow,expect.survey.bm,tot.biomass),3)
 
-b.quants <- res %>% group_by(survey,metric) %>% dplyr::summarise(med = quantile(biomass,probs = c(0.5)),
-                                                                 q25 = quantile(biomass,probs = c(0.25)),
-                                                                 q75 = quantile(biomass,probs = c(0.75)))
+b.quants <- res %>% group_by(survey,metric) %>% dplyr::summarise(med = quantile(biomass,probs = c(0.5),na.rm=T),
+                                                                 q25 = quantile(biomass,probs = c(0.25),na.rm=T),
+                                                                 q75 = quantile(biomass,probs = c(0.75)),na.rm=T)
 p.bm <- ggplot(b.quants) + geom_point(aes(y=med,x = survey)) + facet_wrap(~metric,scale='free_y',ncol = 1) +
                 geom_errorbar(aes(x=survey,ymin=q25,ymax=q75),width=0) + ylab("Median Biomass (with Interquartile Range)")+ xlab("")+
                 geom_hline(aes(yintercept = h.lines),color='grey',linetype='dashed',linewidth=2) +
