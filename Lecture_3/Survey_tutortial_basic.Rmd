@@ -68,7 +68,6 @@ Optional additional exploration if this is all really making perfect sense to yo
       - I suggest trying 1, 5, and 250 (this will be slow!) to see if/how your opinion changes with more realizations of your data.
     - You can change how the biomass is distributed across the survey area on lines 96-102
 
-
 <!-- Here are the parameters you should change -->
 
 ```{r survey-inputs, echo=F}
