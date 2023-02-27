@@ -1,0 +1,441 @@
+---
+title: "Population Dynamics Tutorial"
+author: "Eura Nama"
+output:
+  bookdown::word_document2:
+    fig_caption: yes
+    number_sections: false
+  fontsize: 12pt
+  sansfont: Liberation Sans
+  mainfont: Liberation Sans
+  classoption: twocolumn
+  language: english
+  #bookdown::html_document2: default
+  # bookdown::pdf_document2:
+  #     keep_tex: yes
+  #     number_sections: false
+  #     toc: no
+  #     # includes:
+  #     # in_header: "styling.sty"
+  # language: english
+  # classoption: twocolumn
+header-includes: 
+  - \usepackage{tikz} \usepackage{pdflscape} \usepackage{float}
+  - \newcommand{\blandscape}{\begin{landscape}}
+  - \newcommand{\elandscape}{\end{landscape}}
+---
+
+# Population Dynamics Tutorial Project
+
+# Tutorial Objectives and Overview
+
+1. There are 2 main components to this tutorial that you should ask me lots of questions about until you really understand what is happening!
+   i.  *Explore Logistic Growth*
+         - Explore the logistic growth, how does changing *r* and *K* effect 
+            a) the shape of the population growth curve
+            b) the shape of the population growth curve
+            c) the maximum of the population growth curve
+          - What happens when you include (and increase) variability in *r*?
+            
+
+   ii. *Logistic Growth and Harvesting*
+          - Explore dynamics of logistic growth model with harvesting and variability
+            a) what happens to population if you 'harvest' the population at a value less than Maximum Population Growth (MPG)
+            b) what happens to population if you 'harvest' the population at the MPG
+            c) what happens to population if you 'harvest' the population above the MPG
+            d) what happens if you 'harvest' the population at the MPG curve but there is variability?
+
+   iii. BONUS: Does anyone know what the MPG is called in Fisheries Science?
+
+# The Tutorial Tutorial
+
+i.    Open the file "Population_Dynamics_tutorial.Rmd" in R-Studio
+ii.   On lines 65-78 you can change the input parameters for the analysis and explore how changing these parameters influences the logistic model results
+iii   Press the "Knit" button in the tool bar 
+      - Make sure that you closed (and saved if you want to keep the results) the word document
+
+
+
+
+
+```{r user-inputs, echo=F,message=F, warning=F}
+
+# You can chose your model, this tutorial focuses on the logistic model, but feel free to see what the exponential model deos.
+#model <- 'exponential'
+model <- 'logistic'
+# Pick your rate of growth, try different values, no need to go much above 3
+r <- 0.15
+# Pick your Carrying Capacity (in numbers of individuals)
+K <- 2500
+# How much variability is there in your model. Don't increase this past 15% of r (i.e if r is 0.15 don't have sd > 0.0225)
+sd <- 0.025
+# How many simulations are you running
+n.realizations <- 300
+# Harvest at the theoretical MPG ((r*K)/4)
+harvest <- (r*K)/4
+# Un-comment the below line to pick your own harvest rate and see what happens to your population
+#harvest <- 99 
+
+```
+
+
+
+
+
+```{r setup, include=FALSE,echo=F, message=F,warning=F,cache=F}
+options(scipen = 999) # Just forces numbers to not be in scientific notiation
+# First up we will check your r packages and install anything you need for this for you.
+req.packages <- c("tidyverse","cowplot","knitr","dplyr",'ggthemes',"ggplot2",'devtools')
+# If you don't have the packages install them + give a heads up that you are
+new.packages <- req.packages[!(req.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)>0) 
+{
+  cat(paste0("Heads up, I have to install these packages for this to work:", new.packages ))
+  #wanna.install <- readline(prompt = "If you want to install these package(s) enter 'y': ")
+  #if(tolower(wanna.install) == 'y') 
+  install.packages(new.packages,repos = "http://cran.us.r-project.org") #else { stop("You didn't want to install the packages so this script does not work.")}
+}
+
+
+
+# The libraries that we will use directly in this code
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(tidyverse)
+library(dplyr)
+library(ggthemes)
+
+theme_set(theme_few(base_size = 22))
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+
+theme_set(theme_bw())
+```
+
+
+```{r input-table, include=T,echo=F, message=F,warning=F,cache=F}
+
+# Let's get all the parameters formatted nicely for a table so we can see them
+input.paras <- data.frame(Parameter = c("Intrinsic rate of growth (*r*)", 
+                                       "Carrying Capacity (*K*)",
+                                       "Standard deviation of *r*",
+                                       "Harvest (in numbers)",
+                                       "Number of simulations",
+                                       "Model"),
+                         Value     = c( r,
+                                        K,
+                                        sd,
+                                        harvest,
+                                        n.realizations,
+                                        model))
+
+knitr::kable(input.paras,booktabs=T, caption = "A Table of your parameter settings")
+```
+
+
+
+<!-- Here we run the simulation with no variability or harvesting -->
+```{r no-variabilty-or-harvesting, include=T,echo=F, message=F,warning=F,cache=F}
+
+# OK let's set up some simply models and figures
+
+years <- 2020:2120
+n.years <- length(years)
+Nt <- 1 # This is the initial value of numbers.
+delta.N <- NA
+realized.r <- NA
+
+
+for(i in 2:n.years)
+{
+  
+  if(model == "exponential")  Nt[i] <- Nt[i-1] + (r)*Nt[i-1]
+  if(model == "logistic") Nt[i] <- Nt[i-1] + (r)*Nt[i-1]*(1 - (Nt[i-1])/K) 
+  if(Nt[i] < 1) Nt[i] <- 0
+
+  delta.N[i] <- Nt[i] - Nt[i-1]
+  realized.r[i] <- Nt[i] /Nt[i-1] -1
+
+} # end for(i in 2:n.years)
+
+# Put the results together.
+res<- data.frame(years = years,N = Nt,delta.N = delta.N,real.r = realized.r)
+
+
+n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N))+ 
+                          xlab("") + ylab("Population Abundance") + 
+                          scale_x_continuous(breaks = c(2020,2050,2080,2110))
+
+#save_plot(filename = "D:/Github/Fisheries_module/Lecture_4/Figures/logistic_chaos.png",plot = n.ts.plt,base_width = 8,base_height = 6)
+
+pg.plt <- ggplot(res) + geom_line(aes(x=Nt,y= delta.N)) + 
+                        xlab("Population Size") + ylab("Population Growth") 
+
+#save_plot(filename = "D:/Github/Fisheries_module/Lecture_4/Figures/logistic_pop_growth_example.png",plot = pg.plt,base_width = 8,base_height = 6)
+
+pop.growth.plt <- ggplot(res) + geom_line(aes(x=Nt,y= realized.r)) + 
+                                xlab("Population Size") + ylab("Population Growth Rate")
+
+#save_plot(filename = "D:/Github/Fisheries_module/Lecture_4/Figures/logistic_pop_growth_rate_example.png",plot = pop.growth.plt,base_width = 8,base_height = 6)
+```
+
+
+# PART I: Exploring population dynamics with no variability in *r* and no harvesting
+
+In this example we start the population with 1 individual and track the population over the next 100 years.
+
+
+Figure 1: Population size over time with your selected *r* and *K* parameters.
+
+```{r no-variabilty-or-harvesting-logistic-plt, include=T,echo=F, message=F,warning=F,cache=F}
+n.ts.plt
+```
+
+Figure 2: Population growth figure, comparing annual population growth to population size.
+
+```{r no-variabilty-or-harvesting-dd-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pg.plt
+```
+
+Figure 3: Population growth rate figure, comparing annual population growth rate to population size
+
+```{r no-variabilty-or-harvesting-pg-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pop.growth.plt
+```
+
+
+<!-- Here we run the simulation with variability but no harvesting -->
+
+```{r variabilty-no-harvesting, include=T,echo=F, message=F,warning=F,cache=F}
+
+# OK let's set up some simply models and figures
+
+years <- 2020:2120
+n.years <- length(years)
+Nt <- 1 # This is the initial value of numbers.
+
+delta.N <- NA
+realized.r <- NA
+#model <- "exponential"
+res.tmp <- NULL
+
+for(j in 1:n.realizations)
+{
+for(i in 2:n.years)
+{
+  # Probably should use a log-normal, but the occasional high values that creates is annoying
+  rr <- rnorm(1,r,sd)
+  if(rr < 0) rr <- 0.1*r
+  if(model == "exponential")  Nt[i] <- Nt[i-1] + (rr)*Nt[i-1] 
+  if(model == "logistic") Nt[i] <- Nt[i-1] + (rr)*Nt[i-1]*(1 - (Nt[i-1])/K) 
+  if(Nt[i] < 1) Nt[i] <- 0
+
+  delta.N[i] <- Nt[i] - Nt[i-1]
+  realized.r[i] <- Nt[i] /Nt[i-1] -1
+
+} # end for(i in 2:n.years)
+  res.tmp[[j]] <- data.frame(years = years,N = Nt,delta.N = delta.N,real.r = realized.r,sim.num = j,harvest = harvest)
+} # end for(j in 1:n.realizations)
+
+res <- do.call('rbind',res.tmp)
+
+res.avg <- res %>% dplyr::group_by(years) %>% dplyr::summarise(N = median(N),
+                                                               delta.N = median(delta.N),
+                                                               real.r = median(real.r))
+
+n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N,group = sim.num,color=sim.num),alpha=0.2)+
+        xlab("") + ylab("Population Abundance") + scale_color_viridis_c(direction = -1,option = 1,alpha=0.2) +
+        scale_x_continuous(breaks = c(2020,2050,2080,2110)) + theme(legend.position = "none") 
+
+
+pg.plt <- ggplot(res) + geom_line(aes(x=N,y= delta.N,group = sim.num,color=sim.num),alpha=0.2) +
+                            scale_color_viridis_c(direction = -1,option = 1,alpha=0.2) +
+                            xlab("Population Size") + ylab("Population Growth")  + theme(legend.position = "none") 
+
+
+pop.growth.plt <- ggplot(res) + geom_line(aes(x=N,y= real.r,group = sim.num,color=sim.num),alpha=0.2) +
+                                scale_color_viridis_c(direction = -1,option = 1,alpha=0.2) +
+                                xlab("Population Size") + ylab("Population Growth Rate") + theme(legend.position = "none") 
+
+```
+
+# Part II: Exploring the population dynamics with variability in *r* but no harvesting
+
+In these examples we start the population with 1 individual and track the population over the next 100 years. Because we are adding in random variability we also want to run a number of simulations to explore the range of variability in the data. Each line represents one simulation.
+
+
+Figure 4: Population size over time with your selected *r* and *K* parameters.  Each line represents one simulation.
+
+```{r variabilty-no-harvesting-logistic-plt, include=T,echo=F, message=F,warning=F,cache=F}
+n.ts.plt
+```
+
+Figure 5: Population growth figure, comparing annual population growth to population size. Each line represents one simulation.
+
+```{r variabilty-no-harvesting-dd-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pg.plt
+```
+
+Figure 6: Population growth rate figure, comparing annual population growth rate to population size. Each line represents one simulation.
+
+```{r variabilty-no-harvesting-pg-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pop.growth.plt
+```
+
+
+
+<!-- Here we run the simulation with no variability but a fixed number of individuals removed from the population -->
+
+```{r no-variabilty-with-harvesting, include=T,echo=F, message=F,warning=F,cache=F}
+
+# OK let's set up some simply models and figures
+
+years <- 2020:2120
+n.years <- length(years)
+Nt <- K # This is the initial value of numbers.
+
+delta.N <- NA
+realized.r <- NA
+#model <- "exponential"
+
+for(i in 2:n.years)
+{
+  if(model == "exponential")  Nt[i] <- Nt[i-1] + (r)*Nt[i-1] - harvest
+  if(model == "logistic") Nt[i] <- Nt[i-1] + (r)*Nt[i-1]*(1 - (Nt[i-1])/K) - harvest
+  if(Nt[i] < harvest) Nt[i] <- 0
+
+  delta.N[i] <- Nt[i] - Nt[i-1]
+  realized.r[i] <- Nt[i] /Nt[i-1] -1
+
+} # end for(i in 2:n.years)
+  res <- data.frame(years = years,N = Nt,delta.N = delta.N,real.r = realized.r,sim.num = j,harvest = harvest)
+
+
+n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N))+
+        xlab("") + ylab("Population Abundance") +
+        ylim(c(0,5000)) + scale_x_continuous(breaks = c(2020,2050,2080,2110))
+
+pg.plt <- ggplot(res) + geom_line(aes(x=Nt,y= delta.N)) +
+                        xlab("Population Size") + ylab("Population Growth") 
+
+pop.growth.plt <- ggplot(res) + geom_line(aes(x=Nt,y= realized.r)) +
+                                xlab("Population Size") + ylab("Population Growth Rate")
+
+
+```
+
+
+# Part III: Exploring the population dynamics with no variability in *r* and a fixed harvesting
+
+For this example we start the population at the carrying capacity (*K*) and harvest a set number of individuals from the population (default harvests the population at MPG)
+
+Figure 7: Population size over time with your selected *r* and *K* parameters.  
+
+```{r no-variabilty-but-harvesting-logistic-plt, include=T,echo=F, message=F,warning=F,cache=F}
+n.ts.plt
+```
+
+Figure 8: Population growth figure, comparing annual population growth to population size. 
+
+```{r no-variabilty-but-harvesting-dd-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pg.plt
+```
+
+Figure 9: Population growth rate figure, comparing annual population growth rate to population size. 
+
+```{r no-variabilty-but-harvesting-pg-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pop.growth.plt
+```
+
+
+
+
+```{r variabilty-and-harvesting, include=T,echo=F, message=F,warning=F,cache=F}
+
+# OK let's set up some simply models and figures
+
+years <- 2020:2120
+n.years <- length(years)
+Nt <- K/2 # This is the initial value of numbers.
+
+delta.N <- NA
+realized.r <- NA
+#model <- "exponential"
+res.tmp <- NULL
+
+for(j in 1:n.realizations)
+{
+for(i in 2:n.years)
+{
+  # Probably should use a log-normal, but the occasional high values that creates is annoying
+  rr <- rnorm(1,r,sd) 
+  if(rr < 0) rr <- 0.1*r
+  if(model == "exponential")  Nt[i] <- Nt[i-1] + (rr)*Nt[i-1] -harvest
+  if(model == "logistic") Nt[i] <- Nt[i-1] + (rr)*Nt[i-1]*(1 - (Nt[i-1])/K) -harvest
+  if(Nt[i] < harvest) Nt[i] <- 0
+
+  delta.N[i] <- Nt[i] - Nt[i-1]
+  realized.r[i] <- Nt[i] /Nt[i-1] -1
+
+} # end for(i in 2:n.years)
+  res.tmp[[j]] <- data.frame(years = years,N = Nt,delta.N = delta.N,real.r = realized.r,sim.num = j,harvest = harvest)
+} # end for(j in 1:n.realizations)
+
+res <- do.call('rbind',res.tmp)
+
+res.avg <- res %>% dplyr::group_by(years) %>% dplyr::summarise(N = median(N),
+                                                               delta.N = median(delta.N),
+                                                               real.r = median(real.r))
+
+n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N,group = sim.num,color=sim.num),alpha=0.2)+
+        xlab("") + ylab("Population Abundance") + scale_color_viridis_c(direction = -1,option = 1,alpha=0.2) +
+        scale_x_continuous(breaks = c(2020,2050,2080,2110)) + theme(legend.position = "none") 
+
+pg.plt <- ggplot(res) + geom_line(aes(x=N,y= delta.N,group = sim.num,color=sim.num),alpha=0.2) +
+                            scale_color_viridis_c(direction = -1,option = 1,alpha=0.2) +
+                            xlab("Population Size") + ylab("Population Growth")  + theme(legend.position = "none") 
+
+
+pop.growth.plt <- ggplot(res) + geom_line(aes(x=N,y= real.r,group = sim.num,color=sim.num),alpha=0.2) +
+                                scale_color_viridis_c(direction = -1,option = 1,alpha=0.2) +
+                                xlab("Population Size") + ylab("Population Growth Rate") + theme(legend.position = "none") 
+
+
+
+```
+
+
+
+# Part IV: Exploring  harvesting the population while adding in variability. 
+
+For this example we start the population at half the carrying capacity (K/2) and harvest a set number of individuals from the population (default harvests the population at MPG.  Note that for these simulations if the population abundance is < the harvest we set N to 0
+
+Figure 10: Population size over time with your selected *r* and *K* parameters.  Each line represents one simulation.
+
+```{r variabilty-and-harvesting-logistic-plt, include=T,echo=F, message=F,warning=F,cache=F}
+n.ts.plt
+```
+
+Figure 11: Population growth figure, comparing annual population growth to population size. Each line represents one simulation.
+
+```{r variabilty-and-harvesting-dd-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pg.plt
+```
+
+Figure 12: Population growth rate figure, comparing annual population growth rate to population size. Each line represents one simulation.
+
+```{r variabilty-and-harvesting-pg-plt, include=T,echo=F, message=F,warning=F,cache=F}
+pop.growth.plt
+```
+
+
+
+# Terms and Jargon 
+
+*Important*: Pretty much all of these 'definitions' are simplifications that serve our purposes, but if you go deeper into Fisheries Science you will see that it is often much more complex than this.
+
+- *Simulation:* Process of using certain mathematical/statistical equations and tools to develop data and test the impact of varying inputs and assumptions on the end results. Stochastic simulations incorporate statistical uncertainty in model parameters to generate multiple outcomes by accounting for various types of uncertainty.
+- *Realizations:* When running a stochastic simulation a realization is one set of results, there can be many realizations.
+- *Natural Mortality:* The proportion of the population that dies from 'natural causes' in a given year.
+- *Exploitation:* The proportion of the population that is captured by the fishery in a given year.
+
