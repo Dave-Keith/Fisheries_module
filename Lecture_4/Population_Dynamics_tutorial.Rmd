@@ -31,19 +31,20 @@ header-includes:
 
 1. There are 2 main components to this tutorial that you should ask me lots of questions about until you really understand what is happening!
    i.  *Explore Logistic Growth*
-         - Explore the logistic growth, how does changing *r* and *K* effect 
-            a) the shape of the population growth curve
-            b) the shape of the population growth curve
-            c) the maximum of the population growth curve
+         - Explore the logistic growth, explore changing *r*, *K*, and variability in *r* (the *sd* parameter).
+            a) how does changing *r* effect population growth?
+            b) how does changing *K* effect population growth?
+            c) how does changing these parameters impact the maximum of the population growth curve?
           - What happens when you include (and increase) variability in *r*?
             
 
    ii. *Logistic Growth and Harvesting*
-          - Explore dynamics of logistic growth model with harvesting and variability
-            a) what happens to population if you 'harvest' the population at a value less than Maximum Population Growth (MPG)
-            b) what happens to population if you 'harvest' the population at the MPG
-            c) what happens to population if you 'harvest' the population above the MPG
-            d) what happens if you 'harvest' the population at the MPG curve but there is variability?
+          - Explore dynamics of logistic growth model with harvesting and no variability
+            a) what happens to population if you 'harvest' the population at a value less than Maximum Population Growth (MPG)?
+            b) what happens to population if you 'harvest' the population at the MPG?
+            c) what happens to population if you 'harvest' the population above the MPG?
+          - What happens if you 'harvest' the population at the MPG but there is variability in *r*? 
+            a) How does increasing the variability effect the population?
 
    iii. BONUS: Does anyone know what the MPG is called in Fisheries Science?
 
@@ -69,11 +70,11 @@ r <- 0.15
 K <- 2500
 # How much variability is there in your model. Don't increase this past 15% of r (i.e if r is 0.15 don't have sd > 0.0225)
 sd <- 0.025
-# How many simulations are you running
+# How many simulations are you running, think of each simulation as a different population
 n.realizations <- 300
 # Harvest at the theoretical MPG ((r*K)/4)
 harvest <- (r*K)/4
-# Un-comment the below line to pick your own harvest rate and see what happens to your population
+# Un-comment the below line to pick your own harvest rate and see what happens to your population(s)
 #harvest <- 99 
 
 ```
