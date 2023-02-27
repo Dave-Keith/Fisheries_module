@@ -314,7 +314,7 @@ for(i in 2:n.years)
 
 n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N))+
         xlab("") + ylab("Population Abundance") +
-        ylim(c(0,5000)) + scale_x_continuous(breaks = c(2020,2050,2080,2110))
+        scale_x_continuous(breaks = c(2020,2050,2080,2110))
 
 pg.plt <- ggplot(res) + geom_line(aes(x=Nt,y= delta.N)) +
                         xlab("Population Size") + ylab("Population Growth") 
