@@ -65,9 +65,9 @@ iii   Press the "Knit" button in the tool bar
 #model <- 'exponential'
 model <- 'logistic'
 # Pick your rate of growth, try different values, no need to go much above 3
-r <- 0.15
+r <- 0.25
 # Pick your Carrying Capacity (in numbers of individuals)
-K <- 2500
+K <- 5800
 # How much variability is there in your model. Don't increase this past 15% of r (i.e if r is 0.15 don't have sd > 0.0225)
 sd <- 0.025
 # How many simulations are you running, think of each simulation as a different population
@@ -169,12 +169,12 @@ n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N))+
 
 #save_plot(filename = "D:/Github/Fisheries_module/Lecture_4/Figures/logistic_chaos.png",plot = n.ts.plt,base_width = 8,base_height = 6)
 
-pg.plt <- ggplot(res) + geom_line(aes(x=Nt,y= delta.N)) + 
+pg.plt <- ggplot(res) + geom_line(aes(x=N,y= delta.N)) + 
                         xlab("Population Size") + ylab("Population Growth") 
 
 #save_plot(filename = "D:/Github/Fisheries_module/Lecture_4/Figures/logistic_pop_growth_example.png",plot = pg.plt,base_width = 8,base_height = 6)
 
-pop.growth.plt <- ggplot(res) + geom_line(aes(x=Nt,y= realized.r)) + 
+pop.growth.plt <- ggplot(res) + geom_line(aes(x=N,y= real.r)) + 
                                 xlab("Population Size") + ylab("Population Growth Rate")
 
 #save_plot(filename = "D:/Github/Fisheries_module/Lecture_4/Figures/logistic_pop_growth_rate_example.png",plot = pop.growth.plt,base_width = 8,base_height = 6)
