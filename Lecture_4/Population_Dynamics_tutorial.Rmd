@@ -316,10 +316,10 @@ n.ts.plt <- ggplot(res) + geom_line(aes(x=years,y= N))+
         xlab("") + ylab("Population Abundance") +
         scale_x_continuous(breaks = c(2020,2050,2080,2110))
 
-pg.plt <- ggplot(res) + geom_line(aes(x=Nt,y= delta.N)) +
+pg.plt <- ggplot(res) + geom_line(aes(x=N,y= delta.N)) +
                         xlab("Population Size") + ylab("Population Growth") 
 
-pop.growth.plt <- ggplot(res) + geom_line(aes(x=Nt,y= realized.r)) +
+pop.growth.plt <- ggplot(res) + geom_line(aes(x=N,y= real.r)) +
                                 xlab("Population Size") + ylab("Population Growth Rate")
 
 
