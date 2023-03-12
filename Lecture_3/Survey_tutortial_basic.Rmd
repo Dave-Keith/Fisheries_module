@@ -109,7 +109,7 @@ n.realizations <- 50
 options(scipen = 999) # Just forces numbers to not be in scientific notiation
 # First up we will check your r packages and install anything you need for this for you.
 req.packages <- c("tidyverse","lubridate","plotly","sf","sp","data.table","units","cowplot","knitr",'concaveman',
-                  'ggthemes',"nngeo","marmap","RandomFields","ggplot2","stars","tmaptools","rnaturalearth",
+                  'ggthemes',"nngeo","marmap","geoR","ggplot2","stars","tmaptools","rnaturalearth",
                   "rnaturalearthdata","raster","rgdal","RStoolbox","pals","ggnewscale","ggspatial",'devtools','rlist')
 # If you don't have the packages install them + give a heads up that you are
 new.packages <- req.packages[!(req.packages %in% installed.packages()[,"Package"])]
@@ -136,7 +136,7 @@ library(cowplot)
 library(tidyverse)
 library(dplyr)
 library(tidyr)
-library(RandomFields)
+library(geoR)
 library(sf)
 library(marmap)
 library(stars)
@@ -394,17 +394,25 @@ cent.split <- centroids %>% dplyr::summarise(lat = unlist(map(centroids$survey.g
 bm.res <- NULL
 for(i in 1:n.realizations)
 {
-RFoptions(seed=NA)
 # So for just a random survey here's what we do....
-if(bm.dist == "Random") gmrf.pnts <- RFsimulate(model = RMgauss(var=1, scale =2), x=cent.split$lat, y=cent.split$long, grid=F)
-
+if(bm.dist == "Random") 
+{
+  gmrf <- grf(cov.pars = c(1, 2), grid=data.frame(cent.split)[,1:2],messages=F)
+  gmrfs.pnts <- as.data.frame(gmrf$coords)
+  gmrfs.pnts$variable1 <- gmrf$data
+ }
 
 # If we have a NAFO biomass distribution we add a trend to the data, I've made up some weightings for this...
 if(bm.dist == "NAFO") 
 {
   cent.eff <- st_join(centroids,nafo.strata)
-  model = RMgauss(var=1, scale =1) + cent.eff$effect
-  gmrf.pnts <- RFsimulate(model, x=cent.split$lat, y=cent.split$long, grid=F)
+  # model = RMgauss(var=1, scale =1) 
+  # gmrf.pnts <- RFsimulate(model, x=cent.split$lat, y=cent.split$long, grid=F)
+  # 
+  gmrf <- grf(cov.pars = c(1, 1), grid=data.frame(cent.split)[,1:2],messages=F)
+  gmrfs.pnts <- as.data.frame(gmrf$coords)
+  gmrfs.pnts$variable1 <-   gmrf$data + cent.eff$effect # 
+  gmrfs.pnts$strata = cent.eff$strata.y
 }
   
   
@@ -412,12 +420,15 @@ if(bm.dist == "NAFO")
 if(bm.dist == "Depth") 
 {
   cent.eff <- st_join(centroids,depth.strata)
-  model = RMgauss(var=1, scale =1) + cent.eff$effect
-  gmrf.pnts <- RFsimulate(model, x=cent.split$lat, y=cent.split$long, grid=F)
+  # model = RMgauss(var=1, scale =1) + cent.eff$effect
+  # gmrf.pnts <- RFsimulate(model, x=cent.split$lat, y=cent.split$long, grid=F)
+  gmrf <- grf(cov.pars = c(1, 1), grid=data.frame(cent.split)[,1:2],messages=F)
+  gmrfs.pnts <- as.data.frame(gmrf$coords)
+  gmrfs.pnts$variable1 <-   gmrf$data + cent.eff$effect # 
+  gmrfs.pnts$strata = cent.eff$strata.y
 }
 # convert into an sf() object, which is pretty easy peasy!
-gmrf.pnts.sf <- st_as_sf(gmrf.pnts, crs = 4326)
-st_crs(gmrf.pnts.sf) <- 4326
+gmrf.pnts.sf <- st_as_sf(gmrfs.pnts, coords = c('lat','long'),crs = 4326)
 
 if(bm.dist == "Random") gmrf.bm <- st_join(survey.grid,gmrf.pnts.sf)
 if(bm.dist == "NAFO")   
