@@ -167,7 +167,7 @@ niter <- 20000 # If it is taking a long time for your models to run you can redu
 options(scipen = 999) # Just forces numbers to not be in scientific notiation
 # First up we will check your r packages and install anything you need for this for you.
 req.packages <- c("tidyverse","lubridate","plotly","sf","sp","data.table","units","cowplot","knitr",'concaveman',
-                  'ggthemes',"nngeo","marmap","RandomFields","ggplot2","stars","tmaptools","rnaturalearth",
+                  'ggthemes',"nngeo","marmap","geoR","ggplot2","stars","tmaptools","rnaturalearth",
                   "rnaturalearthdata","raster","rgdal","RStoolbox","pals","ggnewscale","ggspatial",'devtools','rlist','matlab','coda','rjags','R2jags')
 # If you don't have the packages install them + give a heads up that you are
 new.packages <- req.packages[!(req.packages %in% installed.packages()[,"Package"])]
@@ -194,7 +194,7 @@ library(cowplot)
 library(tidyverse)
 library(dplyr)
 library(tidyr)
-library(RandomFields)
+library(geoR)
 library(sf)
 library(marmap)
 library(stars)
@@ -329,17 +329,31 @@ cent.split <- centroids %>% dplyr::summarise(lat = unlist(map(centroids$survey.g
                                       long = unlist(map(centroids$survey.grid,2)))
 
 # Now simulate the field.
-gmrfs <- RFsimulate(model = RMgauss(var=1, scale =1), x=cent.split$lat, y=cent.split$long, grid =F, T = yrs)
-rec.gmrfs <- RFsimulate(model = RMgauss(var=0.4, scale =0.5), x=cent.split$lat, y=cent.split$long, grid =F, T = yrs)
-# Make it an SF object
-gmrfs.sf <- st_as_sf(gmrfs, crs = 4326)
-rec.gmrfs.sf <- st_as_sf(rec.gmrfs, crs = 4326)
-# This extracts the year data from the SP object which we bind to our data.
-gmrfs.sf$years <- gmrfs@coords[,3]
-st_crs(gmrfs.sf) <- 4326
-rec.gmrfs.sf$years <- rec.gmrfs@coords[,3]
-st_crs(rec.gmrfs.sf) <- 4326
-# ggplot(gmrfs.sf) + geom_sf(aes(fill = variable1,color=variable1),size=3) + scale_fill_viridis_b() + scale_color_viridis_b() + facet_wrap(~years)
+# So I need to loop these through years.
+gmrfs <- NULL
+rec.gmrfs <- NULL
+for(i in 1:n.years)
+{
+gmrf.tmp <- grf(cov.pars = c(1, 1), grid=data.frame(cent.split)[,1:2],messages=F)
+rec.gmrf.tmp <- grf(cov.pars = c(0.4, 0.5), grid=data.frame(cent.split)[,1:2],messages=F)
+gmrfs.tmp <- as.data.frame(gmrf.tmp$coords)
+gmrfs.tmp$variable1 <- gmrf.tmp$data
+gmrfs.tmp$years <- yrs[i]
+rec.gmrfs.tmp <- as.data.frame(rec.gmrf.tmp$coords)
+rec.gmrfs.tmp$variable1 <- rec.gmrf.tmp$data
+rec.gmrfs.tmp$years <- yrs[i]
+
+gmrfs[[i]] <- gmrfs.tmp
+rec.gmrfs[[i]] <- rec.gmrfs.tmp
+}
+
+gmrfs <- do.call("rbind",gmrfs)
+rec.gmrfs <- do.call("rbind",rec.gmrfs)
+
+gmrfs.sf <- st_as_sf(gmrfs, coords = c('lat','long'),crs = 4326)
+rec.gmrfs.sf <- st_as_sf(rec.gmrfs, coords = c('lat','long'),crs = 4326)
+
+#ggplot(gmrfs.sf) + geom_sf(aes(fill = variable1,color=variable1),size=3) + scale_fill_viridis_b() + scale_color_viridis_b() + facet_wrap(~years)
 # ggplot(rec.gmrfs.sf) + geom_sf(aes(fill = variable1,color=variable1),size=3) + scale_fill_viridis_b() + scale_color_viridis_b() + facet_wrap(~years)
 ```
 
