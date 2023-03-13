@@ -93,11 +93,11 @@ D.  The survey indices will then be used as the inputs into the Delay Difference
 # The Tutorial Tutorial
 
 i.    Open the file "Stock_Assessment_tutorial.Rmd" in R-Studio
-ii.   On line XX of this file you can change the number of tows used in the survey.  Default is 20 tows
-iii.  On line XX-YY of this file you can change the survey stratification scheme, options are "Random" and "NAFO"
-iv.   On line XX of this file you can change the number of times you simulate the Biomass time series and subsequent survey sampling
-v.    On line XX of this file you can change the *Catchability Prior* to see how this influences the SAM results
-vi.   On line XX of this file you can chnage the *Natural mortality Prior* to see how this influences the SAM results
+ii.   On line 111 of this file you can change the number of tows used in the survey.  Default is 200 tows
+iii.  On line 115-116 of this file you can change the survey stratification scheme, options are "Random" and "NAFO"
+iv.   On line 120 of this file you can change the number of times you simulate the Biomass time series and subsequent survey sampling
+v.    On line 125 of this file you can change the *Catchability Prior* to see how this influences the SAM results
+vi.   On line 128 of this file you can chnage the *Natural mortality Prior* to see how this influences the SAM results
 vii.  Press the "Knit" button in the tool bar 
       - Make sure that you closed (and saved if you want to keep the results) the word document.
 
@@ -117,7 +117,7 @@ surv.dist <-"Random" # This is a random survey
 
 # As with Lecture 2, we can repeated sample the area to understand how changing the above impacts our survey index estimates of the actual Simulated Biomass
 # As with Tutorial #2, I suggest you try 1,5, and 25 realizations (go get a coffee when you run 25 times!)
-n.realizations <- 25
+n.realizations <- 5
 
 # Parameters to tweak for the Delay Difference Stock Assessment Model (SAM)
 
@@ -167,7 +167,7 @@ niter <- 20000 # If it is taking a long time for your models to run you can redu
 options(scipen = 999) # Just forces numbers to not be in scientific notiation
 # First up we will check your r packages and install anything you need for this for you.
 req.packages <- c("tidyverse","lubridate","plotly","sf","sp","data.table","units","cowplot","knitr",'concaveman',
-                  'ggthemes',"nngeo","marmap","geoR","ggplot2","stars","tmaptools","rnaturalearth",
+                  'ggthemes',"nngeo","marmap","geoR","ggplot2","stars","tmaptools","rnaturalearth","zipfR,"
                   "rnaturalearthdata","raster","rgdal","RStoolbox","pals","ggnewscale","ggspatial",'devtools','rlist','matlab','coda','rjags','R2jags')
 # If you don't have the packages install them + give a heads up that you are
 new.packages <- req.packages[!(req.packages %in% installed.packages()[,"Package"])]

@@ -109,7 +109,7 @@ n.realizations <- 50
 options(scipen = 999) # Just forces numbers to not be in scientific notiation
 # First up we will check your r packages and install anything you need for this for you.
 req.packages <- c("tidyverse","lubridate","plotly","sf","sp","data.table","units","cowplot","knitr",'concaveman',
-                  'ggthemes',"nngeo","marmap","geoR","ggplot2","stars","tmaptools","rnaturalearth",
+                  'ggthemes',"nngeo","marmap","geoR","ggplot2","stars","tmaptools","rnaturalearth","zipfR",
                   "rnaturalearthdata","raster","rgdal","RStoolbox","pals","ggnewscale","ggspatial",'devtools','rlist')
 # If you don't have the packages install them + give a heads up that you are
 new.packages <- req.packages[!(req.packages %in% installed.packages()[,"Package"])]
